@@ -85,24 +85,24 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        // Dùng ngoặc kép """ để Jenkins và VS Code dễ hiểu
                         sh """
                             rm -rf deploy-repo || true
 
-                            git clone https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
+                            CLEAN_TOKEN=\$(echo -n "\$GIT_PASSWORD" | tr -d '\\n\\r ')
+                            CLEAN_USER=\$(echo -n "\$GIT_USERNAME" | tr -d '\\n\\r ')
+
+                            git clone https://github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
 
                             sed -i '' "s|khanh662006q/task-api:.*|khanh662006q/task-api:${IMAGE_TAG}|g" api/deployment.yaml
 
-                            # 4. Định danh người commit
                             git config user.name "Jenkins CI"
                             git config user.email "jenkins@nckh.com"
 
-                            # 5. Đóng gói và Commit
-                            git add api/deployment.yaml
-                            git commit -m "Auto-update image tag to build #${IMAGE_TAG}" || echo "Không có thay đổi mới nào."
+                            git remote set-url origin "https://\${CLEAN_USER}:\${CLEAN_TOKEN}@github.com/iam-trongkhanh/task-api-deploy.git"
 
-                            # 6. Push thẳng lên mây (Vì lúc clone đã chèn mật khẩu vào link rồi nên Git sẽ không thắc mắc nữa)
+                            git add api/deployment.yaml
+                            git commit -m "Auto-update image tag to build #${IMAGE_TAG}" || echo "Không có thay đổi nào mới"
                             git push origin main
                         """
                     }
