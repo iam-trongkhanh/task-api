@@ -63,9 +63,13 @@ pipeline {
         stage('Push Image') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDS}") {
-                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
+                    // Ép Jenkins KHÔNG đọc file cấu hình Docker mặc định của máy Mac
+                    // Đây là cách giải quyết triệt để lỗi "desktop-linux context not found"
+                    withEnv(['DOCKER_CONFIG=/dev/null']) {
+                        docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDS}") {
+                            docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
+                            docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
+                        }
                     }
                 }
             }
