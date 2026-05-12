@@ -63,13 +63,19 @@ pipeline {
         stage('Push Image') {
             steps {
                 script {
-                    // Ép Jenkins KHÔNG đọc file cấu hình Docker mặc định của máy Mac
-                    // Đây là cách giải quyết triệt để lỗi "desktop-linux context not found"
-                    withEnv(['DOCKER_CONFIG=/dev/null']) {
-                        docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDS}") {
-                            docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
-                            docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
-                        }
+                    // Dùng withCredentials để lấy Username và Password ra thành biến môi trường
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                        sh """
+                            # Đăng nhập trực tiếp bằng Bash (an toàn qua stdin)
+                            echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
+
+                            # Push image với tag là Build Number
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+
+                            # Đánh tag latest và push
+                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                            docker push ${IMAGE_NAME}:latest
+                        """
                     }
                 }
             }
