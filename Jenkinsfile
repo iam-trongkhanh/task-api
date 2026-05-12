@@ -88,8 +88,8 @@ pipeline {
                         sh """
                             rm -rf deploy-repo || true
 
-                            CLEAN_TOKEN=\$(echo -n "\$GIT_PASSWORD" | tr -d '\\n\\r ')
-                            CLEAN_USER=\$(echo -n "\$GIT_USERNAME" | tr -d '\\n\\r ')
+                            CLEAN_TOKEN=\$(printf "%s" "\$GIT_PASSWORD" | tr -d '\\n\\r ')
+                            CLEAN_USER=\$(printf "%s" "\$GIT_USERNAME" | tr -d '\\n\\r ')
 
                             git clone https://github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
