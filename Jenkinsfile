@@ -82,19 +82,16 @@ pipeline {
         }
 
         stage('Update Deployment Repo') {
-          steps {
+            steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         // Dùng ngoặc kép """ để Jenkins và VS Code dễ hiểu
                         sh """
-                            # 1. Dọn dẹp rác cũ
                             rm -rf deploy-repo || true
 
-                            # 2. Clone kèm theo Auth (Dùng \\$ để ép Bash tự điền Username và Token, giấu nhẹm khỏi Jenkins log)
                             git clone https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
 
-                            # 3. Sửa tag bằng sed của Mac (Dùng \${IMAGE_TAG} để Jenkins chủ động điền số Build vào)
                             sed -i '' "s|khanh662006q/task-api:.*|khanh662006q/task-api:${IMAGE_TAG}|g" api/deployment.yaml
 
                             # 4. Định danh người commit
