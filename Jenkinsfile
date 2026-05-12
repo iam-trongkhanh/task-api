@@ -85,37 +85,32 @@ pipeline {
           steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        // Vùng ngoặc đơn ''' - Bỏ hết các dấu gạch chéo \ đi
-                        sh '''
-                            # Dọn dẹp workspace cũ
+                        // Dùng ngoặc kép """ để Jenkins và VS Code dễ hiểu
+                        sh """
+                            # 1. Dọn dẹp rác cũ
                             rm -rf deploy-repo || true
 
-                            # Clone repo Public KHÔNG cần mật khẩu
-                            git clone https://github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
+                            # 2. Clone kèm theo Auth (Dùng \\$ để ép Bash tự điền Username và Token, giấu nhẹm khỏi Jenkins log)
+                            git clone https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
 
-                            # Dùng sed đè tag mới (Dùng trực tiếp $IMAGE_TAG)
-                            sed -i '' "s|khanh662006q/task-api:.*|khanh662006q/task-api:$IMAGE_TAG|g" api/deployment.yaml
+                            # 3. Sửa tag bằng sed của Mac (Dùng \${IMAGE_TAG} để Jenkins chủ động điền số Build vào)
+                            sed -i '' "s|khanh662006q/task-api:.*|khanh662006q/task-api:${IMAGE_TAG}|g" api/deployment.yaml
 
-                            # Cấu hình định danh Git
+                            # 4. Định danh người commit
                             git config user.name "Jenkins CI"
                             git config user.email "jenkins@nckh.com"
 
-                            # TIÊM MẬT KHẨU TÀNG HÌNH: Đã xóa các dấu \ thừa, để Bash tự gọi biến thật
-                            git config credential.helper "!f() { echo username=$GIT_USERNAME; echo password=$GIT_PASSWORD; }; f"
-
-                            # Đóng gói và chuẩn bị đẩy
+                            # 5. Đóng gói và Commit
                             git add api/deployment.yaml
+                            git commit -m "Auto-update image tag to build #${IMAGE_TAG}" || echo "Không có thay đổi mới nào."
 
-                            # (Mẹo NCKH) Tránh lỗi sập Pipeline nếu file không có gì thay đổi để commit
-                            git commit -m "Auto-update image tag to build #$IMAGE_TAG" || echo "Không có thay đổi mới nào để commit."
-
-                            # Push bình thường (Mật khẩu đã được bơm ngầm)
+                            # 6. Push thẳng lên mây (Vì lúc clone đã chèn mật khẩu vào link rồi nên Git sẽ không thắc mắc nữa)
                             git push origin main
-                        '''
+                        """
                     }
                 }
-          }
+            }
         }
     }
 }
