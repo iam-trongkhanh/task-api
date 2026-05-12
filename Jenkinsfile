@@ -2,11 +2,13 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'dockerhub_user/task-api'
+        // Đã sửa lại đúng username Docker Hub của bạn
+        IMAGE_NAME = 'khanh662006q/task-api'
         IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_CREDS = 'docker-hub-creds'
         GITHUB_CREDS = 'github-creds'
-        DEPLOY_REPO = 'git@github.com:yourusername/task-api-deploy.git' // Adjust as needed
+        // Đã sửa lại đúng URL repo deploy của bạn (dùng HTTPS thay vì SSH)
+        DEPLOY_REPO = 'https://github.com/iam-trongkhanh/task-api-deploy.git'
     }
 
     stages {
@@ -27,13 +29,13 @@ pipeline {
                 script {
                     // Spin up temporary Postgres DB for tests
                     sh 'docker run -d --name test-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskdb -p 5432:5432 postgres:15-alpine'
-                    
+
                     // Wait for DB to be ready
                     sh 'sleep 10'
 
                     // Start the app with local DB connection in background
                     sh 'DB_HOST=localhost nohup npm start > app.log 2>&1 &'
-                    
+
                     // Wait for the app and DB initialization to complete
                     sh 'sleep 10'
 
@@ -63,7 +65,6 @@ pipeline {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDS}") {
                         docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
-                        // Optional: push latest tag as well
                         docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
                     }
                 }
@@ -73,22 +74,28 @@ pipeline {
         stage('Update Deployment Repo') {
             steps {
                 script {
-                    // Clone deploy repo
-                    withCredentials([sshUserPrivateKey(credentialsId: "${GITHUB_CREDS}", keyFileVariable: 'SSH_KEY')]) {
-                        sh '''
-                            export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=no"
-                            git clone ${DEPLOY_REPO} deploy-repo
+                    // Đã sửa thành usernamePassword để khớp với khóa PAT trên Jenkins
+                    withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh """
+                            # Xóa thư mục cũ nếu có để tránh lỗi khi clone
+                            rm -rf deploy-repo || true
+
+                            # Clone repo bằng HTTPS có kẹp credentials (Username và PAT token)
+                            git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
-                            
-                            # Replace REPLACE_IMAGE_TAG with the actual build number using sed
-                            sed -i "s/REPLACE_IMAGE_TAG/${IMAGE_TAG}/g" api/deployment.yaml
-                            
+
+                            # Replace REPLACE_IMAGE_TAG bằng sed (dùng trong Linux/macOS)
+                            # Cờ '' có thể cần thiết trên macOS sed (sed -i '' "s/...") nhưng chạy trong docker node thì sed chuẩn linux
+                            sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|g" api/deployment.yaml
+
+                            # Commit và Push
                             git config user.name "Jenkins CI"
-                            git config user.email "jenkins@example.com"
+                            git config user.email "jenkins@nckh.com"
                             git add api/deployment.yaml
                             git commit -m "Update image tag to ${IMAGE_TAG}"
-                            git push origin main
-                        '''
+
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/iam-trongkhanh/task-api-deploy.git main
+                        """
                     }
                 }
             }
