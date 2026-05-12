@@ -82,33 +82,37 @@ pipeline {
         }
 
         stage('Update Deployment Repo') {
-            steps {
+           steps {
                 script {
-                    // Đã sửa thành usernamePassword để khớp với khóa PAT trên Jenkins
                     withCredentials([usernamePassword(credentialsId: "${GITHUB_CREDS}", passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        sh """
-                            # Xóa thư mục cũ nếu có để tránh lỗi khi clone
+                        // Dùng dấu ngoặc đơn ''' để dùng biến Bash thay vì Groovy
+                        sh '''
+                            # Dọn dẹp workspace cũ
                             rm -rf deploy-repo || true
 
-                            # Clone repo bằng HTTPS có kẹp credentials (Username và PAT token)
-                            git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
+                            # Clone repo Public KHÔNG cần mật khẩu
+                            git clone https://github.com/iam-trongkhanh/task-api-deploy.git deploy-repo
                             cd deploy-repo
 
-                            # Replace REPLACE_IMAGE_TAG bằng sed (dùng trong Linux/macOS)
-                            # Cờ '' có thể cần thiết trên macOS sed (sed -i '' "s/...") nhưng chạy trong docker node thì sed chuẩn linux
-                            sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|g" api/deployment.yaml
+                            # Dùng sed chuẩn macOS để đè tag mới vào file YAML (tìm mọi tag cũ và thay bằng tag mới)
+                            sed -i '' "s|khanh662006q/task-api:.*|khanh662006q/task-api:$IMAGE_TAG|g" api/deployment.yaml
 
-                            # Commit và Push
+                            # Cấu hình định danh Git
                             git config user.name "Jenkins CI"
                             git config user.email "jenkins@nckh.com"
-                            git add api/deployment.yaml
-                            git commit -m "Update image tag to ${IMAGE_TAG}"
 
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/iam-trongkhanh/task-api-deploy.git main
-                        """
+                            # TIÊM MẬT KHẨU TÀNG HÌNH: Ép Git dùng biến môi trường khi Push
+                            git config credential.helper "!f() { echo username=\\$GIT_USERNAME; echo password=\\$GIT_PASSWORD; }; f"
+
+                            # Đóng gói và đẩy lên mây
+                            git add api/deployment.yaml
+                            git commit -m "Auto-update image tag to build #$IMAGE_TAG"
+
+                            # Push bình thường (Git sẽ tự lôi mật khẩu tàng hình ra xài)
+                            git push origin main
+                        '''
                     }
                 }
-            }
+           }
         }
     }
-}
