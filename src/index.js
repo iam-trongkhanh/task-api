@@ -21,7 +21,7 @@ const initDb = async () => {
 
 const PORT = 3000;
 app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is on port ${PORT}`);
   let retries = 5;
   while (retries > 0) {
     try {
