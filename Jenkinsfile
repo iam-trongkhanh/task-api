@@ -2,12 +2,11 @@ pipeline {
     agent any
 
     environment {
-        // Đã sửa lại đúng username Docker Hub của bạn
         IMAGE_NAME = 'khanh662006q/task-api'
         IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_CREDS = 'docker-hub-creds'
         GITHUB_CREDS = 'github-creds'
-        // Đã sửa lại đúng URL repo deploy của bạn (dùng HTTPS thay vì SSH)
+
         DEPLOY_REPO = 'https://github.com/iam-trongkhanh/task-api-deploy.git'
     }
 
