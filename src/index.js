@@ -22,7 +22,7 @@ const initDb = async () => {
 
 const PORT = 3000;
 app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is ran on port ${PORT}`);
   
   // Try to initialize DB on startup. In production with K8s, it might take a few seconds for DB to be up.
   // We'll retry DB initialization a few times.
